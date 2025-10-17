@@ -2,9 +2,7 @@
 resource "aws_cloudwatch_log_metric_filter" "match_filter" {
   name           = "${var.alarm_name}-filter"
   log_group_name = var.log_group_name
-
-  # Count a log event when it contains the match string
-  # Use escaped quotes so CloudWatch treats it as a literal substring
+  # literal substring match: "ALERT_TRIGGER"
   pattern        = "\"${var.match_string}\""
 
   metric_transformation {
@@ -14,7 +12,6 @@ resource "aws_cloudwatch_log_metric_filter" "match_filter" {
   }
 }
 
-# SNS topic + email subscription
 resource "aws_sns_topic" "alarm_topic" {
   name = "${var.alarm_name}-topic"
 }
@@ -25,7 +22,6 @@ resource "aws_sns_topic_subscription" "email" {
   endpoint  = var.alarm_email
 }
 
-# Alarm on >= threshold occurrences per 1-minute period
 resource "aws_cloudwatch_metric_alarm" "log_line_alarm" {
   alarm_name          = var.alarm_name
   comparison_operator = "GreaterThanOrEqualToThreshold"
