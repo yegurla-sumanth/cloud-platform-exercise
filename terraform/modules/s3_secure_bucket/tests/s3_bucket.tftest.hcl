@@ -3,12 +3,14 @@ run "apply_module" {
 
   module {
     source = "./.."
-    variables = {
+
+    variables {
       bucket_name   = "tf-test-${lower(replace(uuid(), "-", ""))}"
       force_destroy = true
     }
   }
 
+  # Assertions against module outputs
   assert {
     condition     = output.bucket_id != ""
     error_message = "Bucket not created"
