@@ -1,11 +1,11 @@
 run "apply_module" {
   command = apply
 
-  module { 
-    source = "./.." 
+  module {
+    source = "./.."
   }
 
-  variables = {
+  variables {
     bucket_name   = "tf-test-${lower(replace(uuid(), "-", ""))}"
     force_destroy = true
   }

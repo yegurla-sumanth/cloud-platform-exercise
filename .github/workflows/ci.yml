@@ -47,10 +47,8 @@ jobs:
       - name: Terraform test (S3 module)
         working-directory: ./terraform/modules/s3_secure_bucket
         run: |
-          terraform init -upgrade
           terraform test
 
-      # Create only the ECR repo first so docker push succeeds
       - name: Create ECR repository (targeted apply)
         working-directory: ./terraform
         env:
