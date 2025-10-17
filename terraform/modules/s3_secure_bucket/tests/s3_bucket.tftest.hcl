@@ -10,7 +10,6 @@ run "apply_module" {
     force_destroy = true
   }
 
-  # Assertions live INSIDE the run block
   assert {
     condition     = output.bucket_id != ""
     error_message = "Bucket not created"
