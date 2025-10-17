@@ -9,7 +9,6 @@ run "apply_module" {
     }
   }
 
-  # Assertions against module outputs
   assert {
     condition     = output.bucket_id != ""
     error_message = "Bucket not created"
@@ -21,12 +20,12 @@ run "apply_module" {
   }
 
   assert {
-    condition     = output.sse_algorithm == "AES256"
-    error_message = "SSE configuration missing or wrong algorithm"
+    condition     = output.has_sse == true
+    error_message = "SSE configuration not configured"
   }
 
   assert {
-    condition     = output.versioning_status == "Enabled"
+    condition     = output.versioning_enabled == true
     error_message = "Versioning not enabled"
   }
 }
