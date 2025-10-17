@@ -2,7 +2,7 @@ name: ci
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   workflow_dispatch:
 
 env:
@@ -20,12 +20,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Python (for potential local tooling)
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      # Option A: Long-lived secrets (simple for exercise)
       - name: Configure AWS creds (static keys)
         if: ${{ secrets.AWS_ACCESS_KEY_ID != '' }}
         uses: aws-actions/configure-aws-credentials@v4
@@ -33,27 +32,6 @@ jobs:
           aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region:            ${{ env.AWS_REGION }}
-
-      # Option B: OIDC (preferred for prod) – requires AWS role setup; comment out if not using
-      # - name: Configure AWS creds (OIDC)
-      #   if: ${{ secrets.AWS_ROLE_TO_ASSUME != '' }}
-      #   uses: aws-actions/configure-aws-credentials@v4
-      #   with:
-      #     role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
-      #     aws-region: ${{ env.AWS_REGION }}
-
-      - name: Log in to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
-
-      - name: Build, tag, and push image
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          IMAGE_TAG: ${{ github.sha }}
-        run: |
-          docker build -t $ECR_REGISTRY/${{ env.IMAGE_REPO_NAME }}:$IMAGE_TAG ./app
-          docker push $ECR_REGISTRY/${{ env.IMAGE_REPO_NAME }}:$IMAGE_TAG
-          echo "IMAGE_URL=$ECR_REGISTRY/${{ env.IMAGE_REPO_NAME }}:$IMAGE_TAG" >> $GITHUB_ENV
 
       - name: Install Terraform
         uses: hashicorp/setup-terraform@v3
@@ -73,19 +51,40 @@ jobs:
           terraform init -upgrade
           terraform test
 
-      - name: Terraform plan
+      # NEW: create only the ECR repo first so docker push succeeds
+      - name: Create ECR repository (targeted apply)
         working-directory: ./terraform
         env:
           TF_VAR_region: ${{ env.AWS_REGION }}
           TF_VAR_image_tag: ${{ github.sha }}
         run: |
-          terraform plan -var-file=envs/dev/terraform.tfvars
+          terraform apply -auto-approve \
+            -var-file=envs/dev/terraform.tfvars \
+            -target=module.ecs_service.aws_ecr_repository.repo
 
-      - name: Terraform apply (auto-approve on main)
+      - name: Log in to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag, and push image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -t $ECR_REGISTRY/${{ env.IMAGE_REPO_NAME }}:$IMAGE_TAG ./app
+          docker push $ECR_REGISTRY/${{ env.IMAGE_REPO_NAME }}:$IMAGE_TAG
+
+      - name: Terraform plan (full stack)
+        working-directory: ./terraform
+        env:
+          TF_VAR_region: ${{ env.AWS_REGION }}
+          TF_VAR_image_tag: ${{ github.sha }}
+        run: terraform plan -var-file=envs/dev/terraform.tfvars
+
+      - name: Terraform apply (full stack)
         if: github.ref == 'refs/heads/main'
         working-directory: ./terraform
         env:
           TF_VAR_region: ${{ env.AWS_REGION }}
           TF_VAR_image_tag: ${{ github.sha }}
-        run: |
-          terraform apply -auto-approve -var-file=envs/dev/terraform.tfvars
+        run: terraform apply -auto-approve -var-file=envs/dev/terraform.tfvars
