@@ -1,6 +1,4 @@
-# Cloud Platform Engineer Exercise — Starter Repo
-
-This repo is a working starting point for the Aetna Health Cloud Platform Engineer code exercise. It implements:
+This repo is a working starting point for using AWS. It implements:
 
 - **ECS/Fargate**: A containerized Flask app behind an **ALB**, provisioned with Terraform.
 - **CI/CD (GitHub Actions)**: Builds Docker image, pushes to **ECR**, runs Terraform checks/tests, and deploys to AWS.
